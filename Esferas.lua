@@ -7,9 +7,9 @@ local Dados = require(game.ReplicatedStorage:WaitForChild("DadosLabirinto"))
 
 local eventoHUD = ReplicatedStorage:WaitForChild("AtualizarEsferas")
 
-local LINHAS = 49
-local COLUNAS = 49
-local CELULA = 5
+local LINHAS = Dados.LINHAS
+local COLUNAS = Dados.COLUNAS
+local CELULA = Dados.CELULA
 
 local TOTAL_ESFERAS = 20
 local DISTANCIA_MINIMA = 3
@@ -31,23 +31,7 @@ repeat
 	yChao = Dados.yChao
 until grid ~= nil and offsetX ~= nil and offsetZ ~= nil and yChao ~= nil
 
-local celulasAbertas = {}
-
-for l = 3, LINHAS - 2 do
-	for c = 3, COLUNAS - 2 do
-		if grid[l][c] == 1 then
-			local naEntrada = (c <= 3 and l <= 5)
-			local naSaida = (l >= LINHAS - 2 and c >= COLUNAS - 3)
-			
-			if not naEntrada and not naSaida then
-				table.insert(celulasAbertas, {
-					l = l,
-					c = c
-				})
-			end
-		end
-	end
-end
+local celulasAbertas = Dados.obterCelulasAbertas()
 
 for i = #celulasAbertas, 2, -1 do
 	local j = math.random(i)
@@ -132,7 +116,7 @@ end
 
 esferasRestantes = #esferasAtivas
 TOTAL_ESFERAS_REAL = #esferasAtivas
-eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS_REAL)
+eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS_REAL, nil, 0)
 
 print("pronto tem ", #esferasAtivas, " pontos")
 
@@ -153,6 +137,8 @@ local function aoTocar(esfera, outraParte)
 		return
 	end
 	
+	Dados.coletarEsfera(jogador.UserId)
+	
 	esferasTocadas[esfera] = true
 	esferasRestantes -= 1
 	
@@ -162,13 +148,16 @@ local function aoTocar(esfera, outraParte)
 			break
 		end
 	end
-	
+	local somColeta = Instance.new("Sound")
+	somColeta.SoundId = "rbxassetid://139158676154751"
+	somColeta.Parent = esfera
+	somColeta:Play()
+	game:GetService("Debris"):AddItem(somColeta, 2)
 	esfera:Destroy()
 	
-	eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS)
-	
+	local coletadasPorEste = Dados.statusJogadores[jogador.UserId].esferasColetadas	
+	eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, coletadasPorEste)
 	print("[Esferas] foi roubada por " .. jogador.Name .. ", por favor procure ele, restam" .. esferasRestantes .. ". por favor protegam elas antes delas serem roubadas")
-	
 end
 
 for _, dados in ipairs(esferasAtivas) do
