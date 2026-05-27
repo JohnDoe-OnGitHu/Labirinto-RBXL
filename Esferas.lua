@@ -7,15 +7,18 @@ local Dados = require(game.ReplicatedStorage:WaitForChild("DadosLabirinto"))
 
 local eventoHUD = ReplicatedStorage:WaitForChild("AtualizarEsferas")
 
+local PERCENTUAL_DEVOLUCAO = 0.5
+local contadorEsferas = 0
+
 local LINHAS = Dados.LINHAS
 local COLUNAS = Dados.COLUNAS
 local CELULA = Dados.CELULA
 
-local TOTAL_ESFERAS = 20
-local DISTANCIA_MINIMA = 3
-local ALTURA_FLUTUACAO = 3
+local TOTAL_ESFERAS = 50
+local DISTANCIA_MINIMA = 7
+local ALTURA_FLUTUACAO = 4
 local VELOCIDADE_FLUTUAR = 0.8
-local AMPLITUDE_FLUTUAR = 0.6
+local AMPLITUDE_FLUTUAR = 0.9
 
 local grid
 local offsetX
@@ -43,23 +46,41 @@ local function distanciaCelulas(a, b)
 end
 
 local posicoesEscolhidas = {}
+local tentativaDistancia = 12
 
-for _, celula in ipairs(celulasAbertas) do
-	if #posicoesEscolhidas >= TOTAL_ESFERAS then break end
-	
-	local podeUsar = true
-	
-	for _, escolhida in ipairs(posicoesEscolhidas) do
-		if distanciaCelulas(celula, escolhida) < DISTANCIA_MINIMA then
-			podeUsar = false
-			break
+while #posicoesEscolhidas < TOTAL_ESFERAS and tentativaDistancia >= 2 do
+	for _, celula in ipairs(celulasAbertas) do
+		if #posicoesEscolhidas >= TOTAL_ESFERAS then break end
+		
+		local jaEscolhida = false
+		
+		for _, escolhida in ipairs(posicoesEscolhidas) do
+			if escolhida.l == celula.l and escolhida.c == celula.c then
+				jaEscolhida = true
+				break
+			end
+		end
+		
+		if not jaEscolhida then
+			local podeUsar = true
+			
+			for _, escolhida in ipairs(posicoesEscolhidas) do
+				if distanciaCelulas(celula, escolhida) < tentativaDistancia then
+					podeUsar = false
+					break
+				end
+			end
+			
+			if podeUsar then
+				table.insert(posicoesEscolhidas, celula)
+			end
 		end
 	end
 	
-	if podeUsar then
-		table.insert(posicoesEscolhidas, celula)
-	end
+	tentativaDistancia -= 1
 end
+
+print("[Esferas] foi criadas pelo ar que criou o ar que fez o ar que criou o ar que fez o ar que criou o ar que fez o ar que criou o ar que fez o ar em " .. #posicoesEscolhidas .. " belza?")
 
 local pasta = workspace:WaitForChild("Labirinto")
 
@@ -110,6 +131,54 @@ local function criarEsfera(linha, coluna, indice)
 	
 end
 
+
+
+local function criarEsferaEspecial()
+	local celulas = Dados.obterCelulasAbertas()
+	
+	for i = #celulas, 2, -1 do
+		local j = math.random(1, i)
+		celulas[i], celulas[j] = celulas[j], celulas[i]
+	end
+	
+	local posOcupadas = {}
+	for _, dados in ipairs(esferasAtivas) do
+		table.insert(posOcupadas, dados.parte.Position)
+	end
+	
+	for _, cel in ipairs(celulas) do
+		if Dados.posicaoEhValida(cel.posicao, posOcupadas, 15) then
+			local esfera = Instance.new("Part")
+			esfera.Name         = "EsferaEspecial_" .. contadorEsferas
+			esfera.Shape        = Enum.PartType.Ball
+			esfera.Size         = Vector3.new(1.5, 1.5, 1.5)
+			esfera.Position     = cel.posicao
+			esfera.Anchored     = true
+			esfera.CanCollide   = false
+			esfera.Material     = Enum.Material.Neon
+			esfera.Color   		= Color3.fromRGB(255, 153, 250)
+			esfera.Parent       = pasta
+
+			local luz = Instance.new("PointLight")
+			luz.Color = Color3.fromRGB(255, 153, 250)
+			luz.Brightness = 10
+			luz.Range = 14
+			luz.Parent = esfera
+			
+			local entrada = {
+				parte = esfera,
+				baseY = cel.posicao.Y,
+				offset = math.random() * math.pi * 2,
+				especial = true,
+				valor = 2
+			}
+			table.insert(esferasAtivas, entrada)
+			
+			return
+		end
+	end
+end
+
 for i, pos in ipairs(posicoesEscolhidas) do
 	criarEsfera(pos.l, pos.c, i)
 end
@@ -122,7 +191,8 @@ print("pronto tem ", #esferasAtivas, " pontos")
 
 local esferasRestantes = #posicoesEscolhidas
 
-local function aoTocar(esfera, outraParte)
+local function aoTocar(esfera, outraParte, valor)
+	valor = valor or 1
 	if esferasTocadas[esfera] then
 		return
 	end
@@ -137,7 +207,7 @@ local function aoTocar(esfera, outraParte)
 		return
 	end
 	
-	Dados.coletarEsfera(jogador.UserId)
+	Dados.coletarEsfera(jogador.UserI, valor)
 	
 	esferasTocadas[esfera] = true
 	esferasRestantes -= 1
@@ -162,12 +232,41 @@ end
 
 for _, dados in ipairs(esferasAtivas) do
 	dados.parte.Touched:Connect(function(outraParte)
-		aoTocar(dados.parte, outraParte)
+		aoTocar(dados.parte, outraParte, dados.valor or 1)
 	end)
 end
 
 RunService.Heartbeat:Connect(function()
 	local t = tick()
+	
+	local function devolverEsferas(jogador)
+		local status = Dados.statusJogadores[jogador.UserId]
+		if not status then return end
+		
+		local coletadas = status.esferasColetadas
+		if coletadas <= 0 then return end
+		
+		local quantidade = math.max(1, math.floor(coletadas * PERCENTUAL_DEVOLUCAO))
+		
+		status.esferasColetadas = 0
+		status.mudouStatus = true
+		
+		for i = 1, quantidade do
+			criarEsferaEspecial()
+		end
+		
+		eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, 0)
+		print("[Esferas] " .. jogador.Name .. " foi oofed. conseguimos devolver " .. quantidade .. " de esferas devolta. o resto ainda esta perdido")
+	end
+	
+	Players.PlayerAdded:Connect(function(jogador)
+		jogador.CharacterAdded:Connect(function(char)
+			local hum = char:WaitForChild("Humanoid")
+			hum.Died:Connect(function()
+				devolverEsferas(jogador)
+			end)
+		end)
+	end)
 	
 	for _, dados in ipairs(esferasAtivas) do
 		if dados.parte and dados.par then
