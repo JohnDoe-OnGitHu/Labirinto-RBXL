@@ -38,83 +38,50 @@ local function escolherCelulasArma(quantidade)
 	-- para o servidor via RemoteEvent.
 	-- ============================================================
 
-	local Players = game:GetService("Players")
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local UserInputService = game:GetService("UserInputService")
 
-	local player = Players.LocalPlayer
-	local mouse = player:GetMouse()
-
-	local eventoArma = ReplicatedStorage:WaitForChild("AtualizarBatalha")
-	local eventoGolpe = ReplicatedStorage:WaitForChild("GolpeEspada")
-
-	-- Escuta os golpes vindos dos clientes
-	eventoGolpe.OnServerEvent:Connect(function(jogador, perseguidor)
-		GerenciadorArmas.registrarGolpe(jogador, perseguidor)
-	end)
-
-	local estaArmado = false
-	local podeClicar = true
-	local COOLDOWN_GOLPE = 0.5
-	local RAIO_GOLPE = 15
-
-	eventoArma.OnClientEvent:Connect(function()
-		if not estaArmado then return end
-		if not podeClicar then return end
-
-		local char = player.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-
-		local perseguidorAlvo = nil
-		local menorDist = RAIO_GOLPE
-
-		local pasta = workspace:FindFirstChild("PerseguidoresAtivos")
-		if not pasta then return end
-
-		for _, modelo in ipairs(pasta:GetChildren()) do
-			local rootPers = modelo:FindFirstChild("HumanoidRootPart")
-			local hum = modelo:FindFirstChildOfClass("Humanoid")
-			if rootPers and hum and hum.Health > 0 then
-				local dist = (root.Position - rootPers.Position).Magnitude
-				if dist < menorDist then
-					menorDist = dist 
-					perseguidorAlvo = modelo
-				end
+	local posJogadores = {}
+	for _, jogador in ipairs(Players:GetPlayers()) do
+		local char = jogador.Character
+		if char then
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root then
+				table.insert(posJogadores, root.Position)
 			end
 		end
-
-		if not perseguidorAlvo then return end
-
-		podeClicar = false
-		task.delay(COOLDOWN_GOLPE, function()
-			podeClicar = true
-		end)
-
-		eventoGolpe:FireServer(perseguidorAlvo)
-
-		print("[Espada] foi massacrado no triste " .. perseguidorAlvo.Name)
-	end)
-
-	for _, entry in ipairs(DadosPers.obterAtivos()) do
-		if entry.rootPart then
-			table.insert(posOcupadas, entry.rootPart.Position)
+	end
+	-- Escuta os golpes vindos dos clientes
+	table.sort(celulas, function(a, b)
+		local distA, distB = math.huge, math.huge
+		for _, pos in ipairs(posJogadores) do
+			distA = math.min(distA, (a.posicao - pos).Magnitude)
+			distB = math.min(distB, (b.posicao - pos).Magnitude)
 		end
-	end
-
-	for i = #celulas, 2, -1 do
-		local j = math.random(1, i)
-		celulas[i], celulas[j] = celulas[j], celulas[i]
-	end
-
+		return distA < distB
+	end)	
+	
 	for _, cel in ipairs(celulas) do
-		if Dados.posicaoEhValida(cel.posicao, posOcupadas, 40) then
-			table.insert(escolhidas, cel)
-			table.insert(posOcupadas, cel.posicao)
-			if #escolhidas >= quantidade then break end
+		local distMin = math.huge
+		for _, pos in ipairs(posJogadores) do
+			distMin = math.min(distMin, (cel.posicao - pos).Magnitude)
+		end
+		
+		if distMin >= 30 and distMin <= 80 then
+			if Dados.posicaoEhValida(cel.posicao, posOcupadas, 8) then
+				table.insert(escolhidas, cel)
+				table.insert(posOcupadas, cel.posicao)
+				if #escolhidas >= quantidade then break end
+			end
 		end
 	end
+	
+	if #escolhidas == 0 then
+		for _, cel in ipairs(celulas) do
+			if Dados.posicaoEhValida(cel.posicao, posOcupadas, 8) then
+				table.insert(escolhidas, cel)
+				if #escolhidas >= quantidade then break end
+			end
+		end
+	end	
 
 	return escolhidas
 end
