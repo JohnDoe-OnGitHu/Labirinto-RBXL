@@ -256,5 +256,8 @@ UIAspectRatioConstraint7.Name = "UIAspectRatioConstraint"
 UIAspectRatioConstraint7.AspectRatio = 2
 UIAspectRatioConstraint7.Parent = ko
 
--- TAREFA MUITO TAREFA!!!!!!!!!11!11111!!!11!!11:
--- fazer a imagem aparecer quando o bixo morre pelo o jogador que foi feito pelo ar que criou o ar que foi feito pelo o ar que crior o ar que foi feito pelo ar que criou o ar que foi feito pelo ar que foi criado pelo ar que foi feito pelo ar que foi feito pelo ar que foi criado pelo ar que foi criado pelo ar.
+eventoPontos.OnClientEvent:Connect(function()
+	ko.Visible = true
+	task.wait(3)
+	ko.Visible = false
+end)
