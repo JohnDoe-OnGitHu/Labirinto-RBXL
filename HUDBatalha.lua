@@ -35,7 +35,7 @@ end
 task.spawn(function() -- < Loop que coloca e gira a seta na frente do usuario
 	while true do
 		task.wait(0.1)
-		
+
 		if setaModel and posicaoArmaAlvo and not estaArmado then
 			print("[Seta] foi colocado como distraia pro usuario ( roubador de pontos ) [ mentira ]")
 			local char = player.Character
@@ -45,7 +45,7 @@ task.spawn(function() -- < Loop que coloca e gira a seta na frente do usuario
 					local frente= root.CFrame.LookVector
 					local posicao = root.Position + frente * 3 * Vector3.new(0, 1, 0)
 					local direcao = (posicaoArmaAlvo - root.Position) * Vector3.new(1, 0 ,1)
-					
+
 					setaModel:SetPrimaryPartCFrame(
 						CFrame.new(posicao) * CFrame.Angles(0, math.atan2(direcao.X, direcao.Z) + math.pi/2, 0)
 					)
@@ -59,6 +59,7 @@ end)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ScreenGui"
+ScreenGui.Enabled = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
@@ -116,7 +117,7 @@ local bar = Instance.new("Frame")
 bar.Name = "bar"
 bar.Position = UDim2.new(0.0144404, 0, 0.108303, 0)
 bar.Size = UDim2.new(0.971119, 0, 0.758123, 0)
-bar.BackgroundColor3 = Color3.new(0.0666667, 1, 0)
+bar.BackgroundColor3 = Color3.new(0, 220, 0)
 bar.BorderSizePixel = 0
 bar.BorderColor3 = Color3.new(0, 0, 0)
 bar.Parent = healthPlayer
@@ -256,7 +257,78 @@ UIAspectRatioConstraint7.Name = "UIAspectRatioConstraint"
 UIAspectRatioConstraint7.AspectRatio = 2
 UIAspectRatioConstraint7.Parent = ko
 
-eventoPontos.OnClientEvent:Connect(function()
+
+-- Cor de vida
+
+local function corDaVida(progresso)
+	if progresso < 0.5 then
+		return Color3.fromRGB(math.floor(255 * (progresso * 2)), 220, 0)
+	else
+		return Color3.fromRGB(255, math.floor(220 * (1 - ( progresso - 0.5) * 2)), 0)
+	end
+end
+
+local function atualizarVida()
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChild("Humanoid")
+	if not hum then return end
+
+	local progresso = 1 - (hum.Health / hum.MaxHealth)
+	local escala = math.clamp(1 - progresso, 0, 1)
+
+	TweenService:Create(bar,
+		TweenInfo.new(0.3, Enum.EasingStyle.Sine),
+		{ Size = UDim2.fromScale(escala, 1), BackgroundColor3 = corDaVida(progresso)}
+	):Play()
+end
+
+-- Verificar eventos
+
+eventoArma.OnClientEvent:Connect(function(tipo, valor)
+	print("[Cliente] recebeu o evento especialmente especifico com o tipo ", tipo, " e o valor ", valor)
+
+	if tipo == "seta" then
+		posicaoArmaAlvo = valor
+		if not setaModel and not estaArmado then
+			criarSeta()
+		end
+	elseif tipo == "armado" then
+		estaArmado = valor
+		ScreenGui.Enabled = true
+
+		if valor then
+			removerSeta()
+			posicaoArmaAlvo = nil
+			bar.Size = UDim2.fromScale(1, 1)
+			bar.BackgroundColor3 = Color3.fromRGB(0, 220, 0)
+			bar2.Size = UDim2.fromScale(0, 1)
+
+			task.spawn(function()
+				while estaArmado do
+					atualizarVida()
+					task.wait(0.2)
+				end
+			end)
+		else
+			if posicaoArmaAlvo then
+				criarSeta()
+			end
+		end
+	elseif tipo == "danoPerseguidor" then
+		TweenService:Create(bar2,
+			TweenInfo.new(0.2, Enum.EasingStyle.Sine),
+			{ Size = UDim2.fromScale(valor, 1) }
+		):Play()
+	elseif tipo == "removerSeta" then
+		removerSeta()
+		posicaoArmaAlvo = nil
+	end
+end)
+
+-- Quando PerseguidoresMortos e atualizado. ele detecta isso e faz o "ko" aparecer.
+
+eventoPontos.OnClientEvent:Connect(function() 
 	ko.Visible = true
 	task.wait(3)
 	ko.Visible = false
