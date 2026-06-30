@@ -7,23 +7,18 @@ local Dados = require(game.ReplicatedStorage:WaitForChild("DadosLabirinto"))
 
 local eventoHUD = ReplicatedStorage:WaitForChild("AtualizarEsferas")
 
-local PERCENTUAL_DEVOLUCAO = 0.5
-local contadorEsferas = 0
 
-local LINHAS = Dados.LINHAS
-local COLUNAS = Dados.COLUNAS
-local CELULA = Dados.CELULA
+local contadorEsferas = 0
 
 local TOTAL_ESFERAS = 50
 local DISTANCIA_MINIMA = 7
 local ALTURA_FLUTUACAO = 4
 local VELOCIDADE_FLUTUAR = 0.8
 local AMPLITUDE_FLUTUAR = 0.9
+local PERCENTUAL_DEVOLUCAO = 0.5
+local CELULA = Dados.CELULA
 
-local grid
-local offsetX
-local offsetZ
-local yChao
+local grid, offsetX, offsetZ, yChao
 
 repeat
 	task.wait(0.1)
@@ -86,6 +81,52 @@ local pasta = workspace:WaitForChild("Labirinto")
 
 local esferasAtivas = {}
 local esferasTocadas = {}
+local esferasRestantes = 0
+local TOTAL_ESFERAS_REAL = 0
+
+local function aoTocar(esfera, outraParte, valor)
+	valor = valor or 1
+	if esferasTocadas[esfera] then
+		return
+	end
+
+	local personagem = outraParte.Parent
+	if not personagem then
+		return
+	end
+
+	local jogador = Players:GetPlayerFromCharacter(personagem)
+	if not jogador then
+		return
+	end
+
+	Dados.coletarEsfera(jogador.UserId, valor)
+
+	esferasTocadas[esfera] = true
+	esferasRestantes -= 1
+
+	for i, dados in ipairs(esferasAtivas) do
+		if dados.parte == esfera then
+			table.remove(esferasAtivas, i)
+			break
+		end
+	end
+	local somColeta = Instance.new("Sound")
+	somColeta.SoundId = "rbxassetid://139158676154751"
+	somColeta.Parent = esfera
+	somColeta:Play()
+	game:GetService("Debris"):AddItem(somColeta, 2)
+	esfera:Destroy()
+
+	local coletadasPorEste = Dados.statusJogadores[jogador.UserId].esferasColetadas	
+	eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, coletadasPorEste)
+end
+
+for _, dados in ipairs(esferasAtivas) do
+	dados.parte.Touched:Connect(function(outraParte)
+		aoTocar(dados.parte, outraParte, dados.valor or 1)
+	end)
+end
 
 local function criarEsfera(linha, coluna, indice)
 	local x = (coluna - 1 + 0.5) * CELULA + offsetX
@@ -119,12 +160,15 @@ local function criarEsfera(linha, coluna, indice)
 		luz.Brightness = 6
 		luz.Range = 14
 		luz.Parent = esfera
-		
-		table.insert(esferasAtivas, {
+				
+		local entrada = {
 			parte = esfera,
 			baseY = y,
-			offsetX = math.random() * math.pi * 2
-		})
+			offset = math.random() * math.pi * 2,
+			valor = 1
+		}
+		
+		table.insert(esferasAtivas, entrada)
 	else
 		warn("[Esferas] Posição foi tirada na colsião da parede no ", linha, coluna)
 	end
@@ -179,6 +223,35 @@ local function criarEsferaEspecial()
 	end
 end
 
+local function devolverEsferas(jogador)
+	local status = Dados.statusJogadores[jogador.UserId]
+	if not status then return end
+
+	local coletadas = status.esferasColetadas
+	if coletadas <= 0 then return end
+
+	local quantidade = math.max(1, math.floor(coletadas * PERCENTUAL_DEVOLUCAO))
+
+	status.esferasColetadas = 0
+	status.mudouStatus = true
+
+	for i = 1, quantidade do
+		criarEsferaEspecial()
+	end
+
+	eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, 0)
+	print("[Esferas] " .. jogador.Name .. " foi oofed. conseguimos devolver " .. quantidade .. " de esferas devolta. o resto ainda esta perdido")
+end
+
+Players.PlayerAdded:Connect(function(jogador)
+	jogador.CharacterAdded:Connect(function(char)
+		local hum = char:WaitForChild("Humanoid")
+		hum.Died:Connect(function()
+			devolverEsferas(jogador)
+		end)
+	end)
+end)
+
 for i, pos in ipairs(posicoesEscolhidas) do
 	criarEsfera(pos.l, pos.c, i)
 end
@@ -186,49 +259,6 @@ end
 esferasRestantes = #esferasAtivas
 TOTAL_ESFERAS_REAL = #esferasAtivas
 eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS_REAL, nil, 0)
-
-print("pronto tem ", #esferasAtivas, " pontos")
-
-local esferasRestantes = #posicoesEscolhidas
-
-local function aoTocar(esfera, outraParte, valor)
-	valor = valor or 1
-	if esferasTocadas[esfera] then
-		return
-	end
-	
-	local personagem = outraParte.Parent
-	if not personagem then
-		return
-	end
-	
-	local jogador = Players:GetPlayerFromCharacter(personagem)
-	if not jogador then
-		return
-	end
-	
-	Dados.coletarEsfera(jogador.UserI, valor)
-	
-	esferasTocadas[esfera] = true
-	esferasRestantes -= 1
-	
-	for i, dados in ipairs(esferasAtivas) do
-		if dados.parte == esfera then
-			table.remove(esferasAtivas, i)
-			break
-		end
-	end
-	local somColeta = Instance.new("Sound")
-	somColeta.SoundId = "rbxassetid://139158676154751"
-	somColeta.Parent = esfera
-	somColeta:Play()
-	game:GetService("Debris"):AddItem(somColeta, 2)
-	esfera:Destroy()
-	
-	local coletadasPorEste = Dados.statusJogadores[jogador.UserId].esferasColetadas	
-	eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, coletadasPorEste)
-	print("[Esferas] foi roubada por " .. jogador.Name .. ", por favor procure ele, restam" .. esferasRestantes .. ". por favor protegam elas antes delas serem roubadas")
-end
 
 for _, dados in ipairs(esferasAtivas) do
 	dados.parte.Touched:Connect(function(outraParte)
@@ -238,35 +268,6 @@ end
 
 RunService.Heartbeat:Connect(function()
 	local t = tick()
-	
-	local function devolverEsferas(jogador)
-		local status = Dados.statusJogadores[jogador.UserId]
-		if not status then return end
-		
-		local coletadas = status.esferasColetadas
-		if coletadas <= 0 then return end
-		
-		local quantidade = math.max(1, math.floor(coletadas * PERCENTUAL_DEVOLUCAO))
-		
-		status.esferasColetadas = 0
-		status.mudouStatus = true
-		
-		for i = 1, quantidade do
-			criarEsferaEspecial()
-		end
-		
-		eventoHUD:FireAllClients(esferasRestantes, TOTAL_ESFERAS, jogador.UserId, 0)
-		print("[Esferas] " .. jogador.Name .. " foi oofed. conseguimos devolver " .. quantidade .. " de esferas devolta. o resto ainda esta perdido")
-	end
-	
-	Players.PlayerAdded:Connect(function(jogador)
-		jogador.CharacterAdded:Connect(function(char)
-			local hum = char:WaitForChild("Humanoid")
-			hum.Died:Connect(function()
-				devolverEsferas(jogador)
-			end)
-		end)
-	end)
 	
 	for _, dados in ipairs(esferasAtivas) do
 		if dados.parte and dados.par then
@@ -279,6 +280,4 @@ RunService.Heartbeat:Connect(function()
 			)
 		end
 	end
-end)
-
-print("[Esferas] criadas: " .. esferasRestantes)
+end) 
