@@ -41,8 +41,8 @@ local function aplicarEfeito(arma)
 	
 	local particulas				= Instance.new("ParticleEmitter")
 	particulas.Texture				= "rbxassetid://9826609769"
-	particulas.Shape				= Enum.PartEmitterShape.Cylinder
-	particulas.ShapeStyle			= Enum.PartEmitterShapeStyle.Volume
+	particulas.Shape				= Enum.ParticleEmitterShape.Cylinder
+	particulas.ShapeStyle			= Enum.ParticleEmitterShapeStyle.Volume
 	particulas.EmissionDirection	= Enum.NormalId.Right
 	particulas.Rate					= 30
 	particulas.Speed				= NumberRange.new(1, 3)
