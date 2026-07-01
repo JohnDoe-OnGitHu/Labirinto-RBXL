@@ -42,12 +42,12 @@ task.spawn(function() -- < Loop que coloca e gira a seta na frente do usuario
 			if char then
 				local root		= char:FindFirstChild("HumanoidRootPart")
 				if root then
-					local frente= root.CFrame.LookVector
-					local posicao = root.Position + frente * 3 * Vector3.new(0, 1, 0)
+					local frente  = root.CFrame.LookVector
+					local posicao = root.Position + frente * 3 + Vector3.new(0, 1, 0)
 					local direcao = (posicaoArmaAlvo - root.Position) * Vector3.new(1, 0 ,1)
 
 					setaModel:SetPrimaryPartCFrame(
-						CFrame.new(posicao) * CFrame.Angles(0, math.atan2(direcao.X, direcao.Z) + math.pi/2, 0)
+						CFrame.new(posicao) * CFrame.Angles(0, math.atan2(direcao.X, direcao.Z) + math.pi, 0)
 					)
 				end
 			end
