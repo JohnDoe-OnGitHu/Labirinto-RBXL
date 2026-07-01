@@ -150,11 +150,22 @@ function GerenciadorArmas.spawnar()
 			warn("[Armas] a espada não tem parte primaria colocada. vai la e coloca seu preguiçoso")
 		end
 
-		for _, parte in ipairs(clone:GetDescendents()) do
+		for _, parte in ipairs(clone:GetDescendants()) do
 			if parte:IsA("BasePart") then
 				parte.Material = Enum.Material.Neon
 			end
 		end
+		
+		-- ── DEBUG: esfera vermelha marca a posição da célula ──
+		local debug = Instance.new("Part")
+		debug.Name        = "DEBUG_ArmaPos"
+		debug.Size        = Vector3.new(2, 2, 2)
+		debug.Position    = cel.posicao
+		debug.BrickColor  = BrickColor.new("Bright red")
+		debug.Anchored    = true
+		debug.CanCollide  = false
+		debug.Material    = Enum.Material.Neon
+		debug.Parent      = workspace
 
 		local entrada = { model = clone, posicao = cel.posicao, ocupada = false }
 		table.insert(armasAtivas, entrada)
