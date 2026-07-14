@@ -1,0 +1,21 @@
+ERICA:
+
+Espada Aparece cada wave: V
+Barra de vida de inimigo funciona: X
+Seta aparece todas as ondas: V
+
+PEDRO:
+
+Espada Aparece cada wave: X
+Barra de vida de inimigo funciona: X
+Seta aparece todas as ondas: X
+
+Concertar Todos os erros no X.
+
+Arrumar:
+
+Pegar mais de uma espada.
+Roubar a espada.
+A seta some daqui a segunda rodada e assim por diante.
+Tem que ajustar a batalha pra usar as teclas.
+Aviso Visual para falar que o perseguidor morreu.
