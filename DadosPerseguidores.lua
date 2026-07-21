@@ -1,8 +1,8 @@
 local DadosPerseguidores = {	
-	INTEVALO_ENTRE_ONDAS 			= 30,
+	INTEVALO_ENTRE_ONDAS 			= 120,
 	DURACAO_ONDA 					= 45,
 	TEMPO_ALERTA 					= 5,
-	TEMPO_ARMA	 					= 40,
+	TEMPO_ARMA	 					= 80,
 
 	--| ( Configuração de batalha ) |--
 
