@@ -240,33 +240,26 @@ function GerenciadorArmas.registrarGolpe(jogador, perseguidor)
 	if not jogadoresArmados[jogador.User] then return end
 
 	local char = jogador.Character
-	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-
-	local rootPers = perseguidor:FindFirstChild("HumanoidRootPart")
-	if not rootPers then return end
-
+	local rootPers = perseguidor and perseguidor:FindFirstChild("HumanoidRootPart")
+	if not root or not rootPers then return end
 	if (root.Position - rootPers.Position).Magnitude > 15 then return end
 
 	local hum = perseguidor:FindFirstChild("Humanoid")
-	if not hum then return end
+	if not hum or hum.Health <= 0 then return end
 
 	local danoGolpe = hum.MaxHealth / DadosPers.GOLPES_PARA_MATAR
 	hum.Health = math.max(0, hum.Health - danoGolpe)
 
-	local progresso = 1 - (hum.Health / hum.MaxHealth)
+	local progresso = hum.Health / hum.MaxHealth
 	eventoArma:FireClient(jogador, "danoPerseguidor", progresso)
 
 	if hum.Health <= 0 then
 		DadosPers.perseguidoresMortos += 1
 		GerenciadorArmas.desarmarJogador(jogador)
-
 		eventoPontos:FireAllClients(DadosPers.perseguidoresMortos, jogador.Name)
-
 		eventoArma:FireClient(jogador, "armado", false)
-
-		print("[Armas] " .. jogador.Name .. " esta sendo procurado por ter feito um crime de assasinato em um perseguidor. ainda resta " .. DadosPers.perseguidoresMortos .. " se tiver informação sobre esse homem. por favor abra esse script")
+		perseguidor:Destroy()
 	end
 end
 
@@ -288,8 +281,6 @@ function GerenciadorArmas.remover()
 	for _, jogador in ipairs(Players:GetPlayers()) do
 		eventoArma:FireClient(jogador, "removerSetas", true)
 	end
-	
-	print("[Armas] foram deletados da existencia pelo ar que ce ja sabe.")
 end
 
 function GerenciadorArmas.estaArmado(userId)
