@@ -3,23 +3,31 @@
 local Players					= game:GetService("Players")
 local ReplicatedStorage			= game:GetService("ReplicatedStorage")
 local TweenService 				= game:GetService("TweenService")
+local UserInputService			= game:GetService("UserInputService") -- NOVO
+
 local player					= Players.LocalPlayer
 local playerGui					= player:WaitForChild("PlayerGui")
 local eventoArma				= ReplicatedStorage:WaitForChild("AtualizarBatalha")
 local eventoPontos				= ReplicatedStorage:WaitForChild("AtualizarPerseguidoresMortos")
+local golpeEvento				= ReplicatedStorage:WaitForChild("GolpeEspada")
 
 --> Estado						<--
 
 local estaArmado				= false
 local posicaoArmaAlvo			= nil
-
---> Seta / Bússola				<--
-
 local setaModel					= nil
 local templateSeta				= ReplicatedStorage:WaitForChild("SetaBussula")
 
+local TECLA_ATAQUE				= Enum.KeyCode.F
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if estaArmado and input.KeyCode == TECLA_ATAQUE then
+		golpeEvento:FireServer()
+	end
+end)
+
 local function criarSeta()
-	print("[Seta] Criando model!")
 	if setaModel then setaModel:Destroy() end
 	setaModel = templateSeta:Clone()
 	setaModel.Parent = workspace
@@ -37,7 +45,6 @@ task.spawn(function() -- < Loop que coloca e gira a seta na frente do usuario
 		task.wait(0.1)
 
 		if setaModel and posicaoArmaAlvo and not estaArmado then
-			print("[Seta] foi colocado como distraia pro usuario ( roubador de pontos ) [ mentira ]")
 			local char = player.Character
 			if char then
 				local root		= char:FindFirstChild("HumanoidRootPart")
@@ -47,7 +54,7 @@ task.spawn(function() -- < Loop que coloca e gira a seta na frente do usuario
 					local direcao = (posicaoArmaAlvo - root.Position) * Vector3.new(1, 0 ,1)
 
 					setaModel:SetPrimaryPartCFrame(
-						CFrame.new(posicao) * CFrame.Angles(0, math.atan2(direcao.X, direcao.Z) + math.pi, 0)
+						CFrame.new(posicao) * CFrame.Angles(0, math.atan2(direcao.X, direcao.Z) + math.pi/2, 0)
 					)
 				end
 			end
@@ -270,66 +277,50 @@ end
 
 local function atualizarVida()
 	local char = player.Character
-	if not char then return end
-	local hum = char:FindFirstChild("Humanoid")
-	if not hum then return end
-
-	local progresso = 1 - (hum.Health / hum.MaxHealth)
-	local escala = math.clamp(1 - progresso, 0, 1)
-
-	TweenService:Create(bar,
-		TweenInfo.new(0.3, Enum.EasingStyle.Sine),
-		{ Size = UDim2.fromScale(escala, 1), BackgroundColor3 = corDaVida(progresso)}
-	):Play()
+	if char and char:FindFirstChild("Humanoid") then
+			local hum = char.Humanoid
+			local escala = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+			TweenService:Create(bar, TweenInfo.new(0.3), {Size - UDim2.fromScale(escala, 1)}):Play()
+	end
 end
 
 -- Verificar eventos
 
 eventoArma.OnClientEvent:Connect(function(tipo, valor)
-	print("[Cliente] recebeu o evento especialmente especifico com o tipo ", tipo, " e o valor ", valor)
-
 	if tipo == "seta" then
 		posicaoArmaAlvo = valor
-		if not setaModel and not estaArmado then
-			criarSeta()
-		end
+		if not estaArmado then criarSeta() end
+		
 	elseif tipo == "armado" then
 		estaArmado = valor
 		ScreenGui.Enabled = true
 
 		if valor then
 			removerSeta()
-			posicaoArmaAlvo = nil
-			bar.Size = UDim2.fromScale(1, 1)
-			bar.BackgroundColor3 = Color3.fromRGB(0, 220, 0)
-			bar2.Size = UDim2.fromScale(0, 1)
-
 			task.spawn(function()
 				while estaArmado do
 					atualizarVida()
 					task.wait(0.2)
 				end
 			end)
-		else
-			if posicaoArmaAlvo then
-				criarSeta()
-			end
 		end
 	elseif tipo == "danoPerseguidor" then
 		TweenService:Create(bar2,
 			TweenInfo.new(0.2, Enum.EasingStyle.Sine),
-			{ Size = UDim2.fromScale(valor, 1) }
-		):Play()
-	elseif tipo == "removerSeta" then
-		removerSeta()
-		posicaoArmaAlvo = nil
-	end
+			{ Size = UDim2.fromScale(valor, 1) }):Play()		
+	
+		elseif tipo == "removerSeta" then
+			removerSeta()
+			posicaoArmaAlvo = nil
+		end
 end)
 
 -- Quando PerseguidoresMortos e atualizado. ele detecta isso e faz o "ko" aparecer.
-
-eventoPontos.OnClientEvent:Connect(function() 
-	ko.Visible = true
-	task.wait(3)
-	ko.Visible = false
+eventoPontos.OnClientEvent:Connect(function(total, nomeQueMatou) 
+	if nomeQueMatou == player.Name then
+		TweenService:Create(bar2, TweenInfo.new(0.3), {Size = UDim2.fromScale(1, 1)}):Play()
+		ko.Visible = true
+		task.wait(3)
+		ko.Visible = false
+	end
 end)
