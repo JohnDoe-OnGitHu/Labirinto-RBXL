@@ -39,7 +39,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		
 		local perseguidorAlvo = nil
 		local menorDist = RAIO_GOLPE
-		local pasta = workspace:FindFirstChild("HumanoidRootPart")
+		local pasta = workspace:FindFirstChild("PerseguidoresAtivos")
 		if not pasta then return end
 		
 		for _, modelo in ipairs(pasta:GetChildren()) do
