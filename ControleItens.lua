@@ -1,3 +1,4 @@
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Dados = require(ReplicatedStorage:WaitForChild("DadosLabirinto"))
 local Evento = ReplicatedStorage:WaitForChild("EventoColetarItem") or Instance.new("RemoteEvent", ReplicatedStorage)
